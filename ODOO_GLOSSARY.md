@@ -1,95 +1,169 @@
-# Odoo Developer Glossary & Cheat Sheet
+# Odoo Developer Glossary & Cheat Sheet (Intern Edition)
 
-To master Odoo quickly, you need to recognize these common patterns and variable names instantly. They are used everywhere in the codebase.
+Welcome! This guide is designed for new coders. It breaks down the "scary" Odoo terms into simple concepts and shows you real code from the `sale` module so you can see them in action.
 
-## 1. Common Variables & Arguments
+---
 
-*   **`self`**: In Odoo, `self` is a **Recordset**. It is NOT just a single object; it can contain 0, 1, or N records.
-    *   *Always* think: "Am I working with one record or many?"
-    *   Iterate it: `for record in self:`
-*   **`env` (`self.env`)**: The **Environment**. It gives you access to:
-    *   The database cursor (`env.cr`).
-    *   The current user (`env.user` / `env.uid`).
-    *   Other models (`env['sale.order']`).
-    *   Context (`env.context`).
-*   **`vals`**: Short for "Values". A dictionary `{'field_name': value}` used when creating or writing to records.
-    *   Used in `create(vals)` and `write(vals)`.
-*   **`cr`**: The Database **Cursor**. Used for executing raw SQL queries (`self.env.cr.execute(...)`). You rarely need this unless doing optimization.
-*   **`uid`**: User ID. The integer ID of the user performing the action.
-*   **`ids`**: A list of integer IDs representing records in the database.
-*   **`context`**: A dictionary carrying "metadata" like the current language (`lang`), timezone, or default values (`default_user_id`).
-*   **`domain`**: A list of tuples defining a filter, e.g., `[('field', 'operator', value)]`.
-    *   Example: `[('state', '=', 'draft'), ('user_id', '=', self.env.uid)]`.
+## 1. The "Big Three" Variables
+You will see these in almost every function.
 
-## 2. Essential ORM Methods (The "Verbs")
+### `self`
+*   **What is it?** It's the "Current Selection" of records. Think of it like a **List of Rows** in Excel that you are currently working on.
+*   **Catch:** It might have 1 row, 100 rows, or 0 rows.
+*   **Real Code Example:**
+    ```python
+    # From sale_order.py
+    for order in self:
+        # We loop through each 'row' (order) in the list
+        order.require_signature = order.company_id.portal_confirmation_sign
+    ```
+*   **Translation:** "For every order in my current list, set the signature requirement based on the company's setting."
 
-*   **`search(domain)`**: Finds records matching the domain. Returns a Recordset.
-*   **`browse(ids)`**: Takes a list of IDs and returns a Recordset. Does NOT hit the database immediately (lazy loading).
-*   **`create(vals)`**: Creates a new record in the database. Returns the created record.
-*   **`write(vals)`**: Updates values on *all* records in the current Recordset. Returns `True`.
-*   **`unlink()`**: Deletes the records in the current Recordset.
-*   **`search_count(domain)`**: Returns the number of records matching the domain. Faster than `len(search(domain))`.
+### `env` (Environment)
+*   **What is it?** Your "Toolbox". It gives you access to everything else in Odoo: other tables, the current user, the database.
+*   **How to access:** `self.env`
+*   **Real Code Example:**
+    ```python
+    # searching for a pricelist in the 'product.pricelist' table
+    is_active = self.env['product.pricelist'].search([('active', '=', True)])
+    ```
+*   **Translation:** "Go into my toolbox, grab the Pricelist table, and search for active ones."
 
-## 3. Working with Recordsets (The "Tools")
+### `vals` (Values)
+*   **What is it?** A "Dictionary" (Key-Value pairs) containing data to Save.
+*   **Format:** `{'column_name': new_value, 'other_column': 123}`
+*   **Real Code Example:**
+    ```python
+    # In the create method
+    vals['name'] = "New Order 001"
+    super().create(vals)
+    ```
+*   **Translation:** "In the box of data we are about to save (`vals`), set the Name to 'New Order 001'."
 
-*   **`ensure_one()`**: Checks if `self` contains exactly one record. Raises an error otherwise. Use this at the start of methods that only make sense for a single record.
-*   **`filtered(func)`**: Returns a new Recordset containing only records that match the condition.
-    *   `paid_orders = orders.filtered(lambda r: r.state == 'paid')`
-*   **`mapped(func/field)`**: Returns a list (or Recordset) of values from the records.
-    *   `names = orders.mapped('name')` (Returns list of strings)
-    *   `partners = orders.mapped('partner_id')` (Returns Recordset of partners)
-*   **`sorted(key)`**: Returns a sorted Recordset.
+---
 
-## 4. Key Decorators (The "Config")
+## 2. The Actions (ORM Methods)
+These are the verbs you use to interact with the database.
 
-*   **`@api.depends('field_A', 'field_B')`**: Used on **Computed Fields**. Tells Odoo: "Recalculate this function if field_A or field_B changes".
-*   **`@api.onchange('field_A')`**: Used for UI updates. Tells Odoo: "When the user changes field_A in the form, run this immediately" (before saving).
-*   **`@api.constrains('field_A')`**: Used for Validation. Tells Odoo: "Check this logic when field_A is saved". Raises `ValidationError` if failed.
-*   **`@api.model`**: Decorates a method that doesn't care about specific records (like a static method). `self` will be empty/generic.
-*   **`@api.returns('self')`**: Hint that the method returns a recordset of the same model.
+### `search(domain)`
+*   **What is it?** "Find me records". Equivalent to SQL `SELECT * FROM table WHERE ...`.
+*   **Real Code Example:**
+    ```python
+    # Find orders that have a pending email template
+    pending_orders = self.search([('pending_email_template_id', '!=', False)])
+    ```
+*   **Translation:** "Search this table for any order where 'pending_email_template_id' is NOT empty."
 
-## 5. Field Types & Attributes
+### `create(vals)`
+*   **What is it?** "Insert a new row".
+*   **Real Code Example:**
+    ```python
+    # Creating a new activity for a user
+    self.env['mail.activity'].create({
+        'res_id': order.id,
+        'user_id': order.user_id.id,
+        'note': 'Please check this order',
+    })
+    ```
+*   **Translation:** "Create a new row in the Activity table with these specific values."
 
-*   **`Many2one`**: Link to *one* other record (Foreign Key). e.g., `partner_id`.
-*   **`One2many`**: Link to *multiple* records (Reverse of Many2one). e.g., `order_line`. requires `inverse_name`.
-*   **`Many2many`**: Link to *multiple* records (Table to Table). e.g., `tag_ids`.
-*   **`Selection`**: A drop-down list. Stored as the "key", displayed as the "value".
-*   **`compute='_compute_method'`**: Makes the field generic/calculated.
-    *   **`store=True`**: The computed value is stored in the database (recomputed only when dependencies change). Good for searching/sorting.
-    *   **`store=False`** (Default): Calculated on the fly every time.
-*   **`related='field.subfield'`**: A shortcut to grab a value from a related record.
+### `write(vals)`
+*   **What is it?** "Update existing rows".
+*   **Real Code Example:**
+    ```python
+    # Changing the state of an order to 'sent'
+    self.write({'state': 'sent'})
+    ```
+*   **Translation:** "Update ALL records in `self` (my current list) and change their state to 'sent'."
 
-## 6. Common Coding Patterns
+### `unlink()`
+*   **What is it?** "Delete rows".
+*   **Real Code Example:**
+    ```python
+    # Delete lines that are just section headers
+    section_lines = self.order_line.filtered(lambda l: l.display_type == 'line_section')
+    section_lines.unlink()
+    ```
+*   **Translation:** "Take the section lines I found and delete them from the database."
 
-**The "Compute" Pattern:**
-```python
-amount = fields.Float(compute='_compute_amount')
+---
 
-@api.depends('price', 'qty')
-def _compute_amount(self):
-    for record in self:
-        record.amount = record.price * record.qty
-```
-*Note: Always loop over `self`!*
+## 3. The "List" Tools (Recordset Operations)
+Since `self` is a list of records, Odoo gives you tools to filter and sort them without writing SQL.
 
-**The "Override" Pattern:**
-```python
-def write(self, vals):
-    # Logic BEFORE saving
-    if 'state' in vals:
-        do_something()
+### `filtered(lambda ...)`
+*   **What is it?** "Keep only these". Like an Excel Filter.
+*   **Real Code Example:**
+    ```python
+    # Get only the orders that are currently in 'sale' state
+    confirmed_orders = self.filtered(lambda so: so.state == 'sale')
+    ```
+*   **Translation:** "Look at `self`, and give me a new list containing ONLY the orders where state is 'sale'."
 
-    result = super(MyModel, self).write(vals) # Save to DB
+### `mapped('field')`
+*   **What is it?** "Extract a column". Like selecting a column in Excel and copying it.
+*   **Real Code Example:**
+    ```python
+    # Get a list of all names of partners in these orders
+    partner_names = self.mapped('partner_id.name')
+    ```
+*   **Translation:** "From every order in my list, grab the Partner's Name and give me a plain list of them."
 
-    # Logic AFTER saving
-    return result
-```
+### `ensure_one()`
+*   **What is it?** "Panic if there's more than one!". It's a safety check.
+*   **Real Code Example:**
+    ```python
+    def action_confirm(self):
+        self.ensure_one()
+        # ... logic that only works for a SINGLE order ...
+    ```
+*   **Translation:** "Stop everything if `self` contains 0 records or 2+ records. I can only handle exactly one right now."
 
-**The "Sudo" Pattern:**
-*   **`self.sudo()`**: Returns a new Recordset where the current user is "Superuser" (Admin), bypassing access rules. Use carefully!
+---
 
-## 7. Special Files
+## 4. The Decorators (Magic Tags)
+These sit above your functions (`@...`) and tell Odoo *when* to run them.
 
-*   **`__manifest__.py`**: The module configuration (dependencies, loaded views, security files).
-*   **`ir.model.access.csv`**: Defines who can Read/Write/Create/Delete models. (Security).
-*   **`view.xml`**: Defines the UI (Forms, Trees, Search).
+### `@api.depends('field')`
+*   **What is it?** "Auto-Calculate this". Used for fields that compute their own value.
+*   **Real Code Example:**
+    ```python
+    @api.depends('price', 'qty')
+    def _compute_total(self):
+        for record in self:
+            record.total = record.price * record.qty
+    ```
+*   **Translation:** "Watch the 'price' and 'qty' fields. If either changes, re-run this function to update 'total'."
+
+### `@api.onchange('field')`
+*   **What is it?** "Update the UI immediately". Runs when the user is typing in a form, *before* they save.
+*   **Real Code Example:**
+    ```python
+    @api.onchange('partner_id')
+    def _onchange_partner(self):
+        # When user selects a customer, auto-fill their address
+        self.shipping_address = self.partner_id.address
+    ```
+*   **Translation:** "As soon as the user picks a Partner in the dropdown, verify/update the shipping address field on the screen."
+
+### `@api.constrains('field')`
+*   **What is it?** "Validation Rule". Runs when saving.
+*   **Real Code Example:**
+    ```python
+    @api.constrains('percent')
+    def _check_percent(self):
+        if self.percent > 100:
+            raise ValidationError("You cannot give 110%!")
+    ```
+*   **Translation:** "When saving, check the 'percent' field. If it's bad, block the save and show this error."
+
+---
+
+## 5. Field Types
+How we define columns in the database table.
+
+*   **`fields.Char`**: A small text box (e.g., Name).
+*   **`fields.Float`**: A decimal number (e.g., Price).
+*   **`fields.Many2one`**: A link to **one** parent (e.g., `partner_id` links to one Customer).
+*   **`fields.One2many`**: A link to **many** children (e.g., `order_line` links to many items).
+*   **`fields.Selection`**: A static dropdown list (e.g., `state`: Draft, Sent, Done).
