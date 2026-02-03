@@ -51,8 +51,12 @@ RUN chmod +x /opt/odoo/entrypoint.sh
 # Copy Application Code
 COPY . /opt/odoo/
 
-# Change ownership
-RUN chown -R odoo:odoo /opt/odoo
+# Fix permissions:
+# 1. Ownership of the application code
+# 2. Pre-create /etc/odoo.conf and give ownership to odoo user so entrypoint can write to it
+RUN chown -R odoo:odoo /opt/odoo \
+    && touch /etc/odoo.conf \
+    && chown odoo:odoo /etc/odoo.conf
 
 # Switch to odoo user
 USER odoo

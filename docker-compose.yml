@@ -10,9 +10,9 @@ services:
       - ./addons:/opt/odoo/addons
       - odoo-web-data:/var/lib/odoo
     environment:
-      - HOST=db
-      - USER=odoo
-      - PASSWORD=CHANGE_ME_DB_PASSWORD
+      - DB_HOST=db
+      - DB_USER=odoo
+      - DB_PASSWORD=CHANGE_ME_DB_PASSWORD
     restart: always
 
   db:
