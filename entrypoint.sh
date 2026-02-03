@@ -2,7 +2,7 @@
 set -e
 
 # If ODOO_CONF_FILE is not present (or empty), generate it from Environment Variables
-ODOO_CONF=${ODOO_CONF:-/etc/odoo.conf}
+ODOO_CONF=${ODOO_CONF:-/opt/odoo/odoo.conf}
 
 if [ ! -f "$ODOO_CONF" ] || [ ! -s "$ODOO_CONF" ]; then
     echo "Generating $ODOO_CONF from environment variables..."
@@ -12,7 +12,7 @@ if [ ! -f "$ODOO_CONF" ] || [ ! -s "$ODOO_CONF" ]; then
     DB_USER=${DB_USER:-odoo}
     DB_PASSWORD=${DB_PASSWORD:-odoo}
     ADMIN_PASSWD=${ADMIN_PASSWD:-admin}
-    ADDONS_PATH=${ADDONS_PATH:-/opt/odoo/addons}
+    ADDONS_PATH=${ADDONS_PATH:-/opt/odoo/addons,/opt/odoo/odoo/addons}
 
     # Write config file
     cat <<EOF > "$ODOO_CONF"
