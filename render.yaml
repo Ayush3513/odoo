@@ -4,7 +4,11 @@ services:
     name: odoo-server
     runtime: docker
     plan: free
+    healthCheckPath: /
+    initialDelaySeconds: 300
     envVars:
+      - key: ODOO_CONF
+        value: /etc/odoo_render.conf
       - key: DB_HOST
         fromDatabase:
           name: odoo-db
