@@ -27,8 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install wkhtmltopdf (Standard Odoo Requirement for PDF Reports)
-# Using a pre-built binary is often the most reliable way on slim images
+# Install wkhtmltopdf
 RUN curl -o wkhtmltox.deb -sSL https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
     && apt-get update \
     && apt-get install -y --no-install-recommends ./wkhtmltox.deb \
@@ -40,12 +39,16 @@ RUN useradd -ms /bin/bash odoo
 # Work directory
 WORKDIR /opt/odoo
 
-# Copy requirements first to leverage Docker cache
+# Copy requirements
 COPY requirements.txt /opt/odoo/
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-# Copy the rest of the application code
+# Copy Entrypoint
+COPY entrypoint.sh /opt/odoo/
+RUN chmod +x /opt/odoo/entrypoint.sh
+
+# Copy Application Code
 COPY . /opt/odoo/
 
 # Change ownership
@@ -56,6 +59,9 @@ USER odoo
 
 # Expose Odoo services
 EXPOSE 8069 8072
+
+# Set Entrypoint
+ENTRYPOINT ["/opt/odoo/entrypoint.sh"]
 
 # Default command
 CMD ["python3", "odoo-bin", "-c", "/etc/odoo.conf"]
