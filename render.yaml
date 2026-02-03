@@ -4,6 +4,7 @@ services:
     name: odoo-server
     runtime: docker
     plan: free
+    healthCheckPath: /
     envVars:
       - key: DB_HOST
         fromDatabase:

@@ -64,4 +64,4 @@ EXPOSE 8069 8072
 ENTRYPOINT ["/opt/odoo/entrypoint.sh"]
 
 # Default command
-CMD ["python3", "odoo-bin", "-c", "/etc/odoo.conf"]
+CMD ["python3", "odoo-bin", "-c", "/opt/odoo/odoo.conf"]
