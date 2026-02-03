@@ -40,6 +40,9 @@ RUN useradd -ms /bin/bash odoo
 WORKDIR /opt/odoo
 
 # Copy requirements
+# Copy Config
+COPY odoo_render.conf /etc/odoo_render.conf
+
 COPY requirements.txt /opt/odoo/
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
